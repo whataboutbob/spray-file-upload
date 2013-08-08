@@ -11,7 +11,11 @@ object BuildSettings {
 }
 
 object Dependencies {
-  val akka_actor = "com.typesafe.akka" % "akka-actor_2.10" % "2.2.0"
+  /*NOTE:
+    Spray 1.2-M8 is incompatible with Akka 2.2.0 final, either use
+    Akka 2.2.0-RC1 or upgrade to a more recently nightly build of Spray 1.2.
+   */
+  val akka_actor = "com.typesafe.akka" % "akka-actor_2.10" % "2.2.0-RC1"
   val spray_json = "io.spray" %% "spray-json" % "1.2.5"
   val spray_can = "io.spray" % "spray-can" % "1.2-M8"
   val spray_httpx = "io.spray" % "spray-httpx" % "1.2-M8"
