@@ -5,6 +5,7 @@ import spray.http._
 import spray.http.MediaTypes._
 import spray.routing._
 import spray.http.BodyPart
+import java.io.{ ByteArrayInputStream, InputStream, OutputStream }
 
 // we don't implement our route structure directly in the service actor because
 // we want to be able to test it independently, without having to spin up an actor
@@ -42,10 +43,11 @@ trait DemoService extends HttpService {
               complete {
                 val details = formData.fields.map {
                   case (name, BodyPart(entity, headers)) =>
-                    val content = entity.buffer
+                    //val content = entity.buffer
+                    val content = new ByteArrayInputStream(entity.buffer)
                     val contentType = headers.find(h => h.is("content-type")).get.value
                     val fileName = headers.find(h => h.is("content-disposition")).get.value.split("filename=").last
-                    val result = saveFile(fileName, content)
+                    val result = saveAttachment(fileName, content)
                     (contentType, fileName, result)
                   case _ =>
                 }
@@ -66,10 +68,33 @@ trait DemoService extends HttpService {
     </html>
 
 
-  private def saveFile(fileName: String, content: Array[Byte]) = {
-    val fos = new java.io.FileOutputStream(fileName)
-    fos.write(content)
-    fos.close()
+  private def saveAttachment(fileName: String, content: Array[Byte]): Boolean = {
+    saveAttachment[Array[Byte]](fileName, content, {(is, os) => os.write(is)})
+    true
   }
+
+  private def saveAttachment(fileName: String, content: InputStream): Boolean = {
+    saveAttachment[InputStream](fileName, content,
+    { (is, os) =>
+      val buffer = new Array[Byte](16384)
+      Iterator
+        .continually (is.read(buffer))
+        .takeWhile (-1 !=)
+        .foreach (read=>os.write(buffer,0,read))
+    }
+    )
+  }
+
+  private def saveAttachment[T](fileName: String, content: T, writeFile: (T, OutputStream) => Unit): Boolean = {
+    try {
+      val fos = new java.io.FileOutputStream(fileName)
+      writeFile(content, fos)
+      fos.close()
+      true
+    } catch {
+      case _ => false
+    }
+  }
+
 
 }
